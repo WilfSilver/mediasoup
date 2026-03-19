@@ -187,13 +187,27 @@ namespace RTC
 
 				auto* context = static_cast<Codecs::VP9::EncodingContext*>(encodingContext);
 
-				MS_ASSERT(context->GetTargetSpatialLayer() >= 0, "target spatial layer cannot be -1");
+				// MS_ASSERT(context->GetTargetSpatialLayer() >= 0, "target spatial layer cannot be -1");
 				MS_ASSERT(context->GetTargetTemporalLayer() >= 0, "target temporal layer cannot be -1");
 
 				auto packetSpatialLayer  = GetSpatialLayer();
 				auto packetTemporalLayer = GetTemporalLayer();
 				auto tmpSpatialLayer     = context->GetCurrentSpatialLayer();
 				auto tmpTemporalLayer    = context->GetCurrentTemporalLayer();
+
+				auto hasSpatial = context->GetTargetSpatialLayer() >= 0;
+
+				// Check if the payload should contain temporal layer info.
+				if (context->GetSpatialLayers() > 1 && !this->payloadDescriptor->hasSlIndex)
+				{
+					MS_WARN_DEV("stream is supposed to have >1 spatial layers but does not have SlIndex field");
+				}
+
+				// Check if the payload should contain temporal layer info.
+				if (context->GetTemporalLayers() > 1 && !this->payloadDescriptor->hasTlIndex)
+				{
+					MS_WARN_DEV("stream is supposed to have >1 temporal layers but does not have TlIndex field");
+				}
 
 				// If packet spatial or temporal layer is higher than maximum announced
 				// one, drop the packet.
@@ -218,7 +232,7 @@ namespace RTC
 				   RTC::SeqManager<uint16_t, 15>::IsSeqLowerThan(
 				     this->payloadDescriptor->pictureId, context->pictureIdManager.GetMaxInput()));
 
-				if (!isOldPacket)
+				if (!isOldPacket && hasSpatial)
 				{
 					// Upgrade current spatial layer if needed.
 					if (context->GetTargetSpatialLayer() > context->GetCurrentSpatialLayer())
@@ -286,9 +300,9 @@ namespace RTC
 				              : tmpSpatialLayer;
 
 				if (
-				  packetSpatialLayer > spatialLayerForPictureId ||
-				  (context->IsKSvc() && this->payloadDescriptor->p &&
-				   packetSpatialLayer != spatialLayerForPictureId))
+				  hasSpatial && (packetSpatialLayer > spatialLayerForPictureId ||
+				                 (context->IsKSvc() && this->payloadDescriptor->p &&
+				                  packetSpatialLayer != spatialLayerForPictureId)))
 				{
 					return false;
 				}
@@ -344,7 +358,7 @@ namespace RTC
 				}
 
 				// Set marker bit if needed.
-				if (packetSpatialLayer == tmpSpatialLayer && this->payloadDescriptor->e)
+				if (hasSpatial && packetSpatialLayer == tmpSpatialLayer && this->payloadDescriptor->e)
 				{
 					marker = true;
 				}
@@ -358,7 +372,7 @@ namespace RTC
 				}
 
 				// Update current spatial layer if needed.
-				if (tmpSpatialLayer != context->GetCurrentSpatialLayer())
+				if (hasSpatial && tmpSpatialLayer != context->GetCurrentSpatialLayer())
 				{
 					context->SetCurrentSpatialLayer(tmpSpatialLayer, this->payloadDescriptor->pictureId);
 				}
