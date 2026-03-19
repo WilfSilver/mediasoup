@@ -128,13 +128,15 @@ namespace RTC
 
 				auto* context = static_cast<Codecs::AV1::EncodingContext*>(encodingContext);
 
-				MS_ASSERT(context->GetTargetSpatialLayer() >= 0, "target spatial layer cannot be -1");
+				// MS_ASSERT(context->GetTargetSpatialLayer() >= 0, "target spatial layer cannot be -1");
 				MS_ASSERT(context->GetTargetTemporalLayer() >= 0, "target temporal layer cannot be -1");
 
 				auto packetSpatialLayer  = GetSpatialLayer();
 				auto packetTemporalLayer = GetTemporalLayer();
 				auto tmpSpatialLayer     = context->GetCurrentSpatialLayer();
 				auto tmpTemporalLayer    = context->GetCurrentTemporalLayer();
+
+				auto hasSpatial = context->GetTargetSpatialLayer() >= 0;
 
 				// If packet spatial or temporal layer is higher than maximum announced
 				// one, drop the packet.
@@ -147,7 +149,7 @@ namespace RTC
 				}
 
 				// Upgrade current spatial layer if needed.
-				if (context->GetTargetSpatialLayer() > context->GetCurrentSpatialLayer())
+				if (hasSpatial && context->GetTargetSpatialLayer() > context->GetCurrentSpatialLayer())
 				{
 					if (this->payloadDescriptor->isKeyFrame)
 					{
@@ -164,7 +166,7 @@ namespace RTC
 					}
 				}
 				// Downgrade current spatial layer if needed.
-				else if (context->GetTargetSpatialLayer() < context->GetCurrentSpatialLayer())
+				else if (hasSpatial && context->GetTargetSpatialLayer() < context->GetCurrentSpatialLayer())
 				{
 					if (packetSpatialLayer == context->GetTargetSpatialLayer() && this->payloadDescriptor->endOfFrame)
 					{
@@ -182,7 +184,7 @@ namespace RTC
 				}
 
 				// Filter spatial layers higher than current one.
-				if (packetSpatialLayer > tmpSpatialLayer)
+				if (hasSpatial && packetSpatialLayer > tmpSpatialLayer)
 				{
 					return false;
 				}
@@ -227,13 +229,13 @@ namespace RTC
 				}
 
 				// Set marker bit if needed.
-				if (packetSpatialLayer == tmpSpatialLayer && this->payloadDescriptor->endOfFrame)
+				if (hasSpatial && packetSpatialLayer == tmpSpatialLayer && this->payloadDescriptor->endOfFrame)
 				{
 					marker = true;
 				}
 
 				// Update current spatial layer if needed.
-				if (tmpSpatialLayer != context->GetCurrentSpatialLayer())
+				if (hasSpatial && tmpSpatialLayer != context->GetCurrentSpatialLayer())
 				{
 					context->SetCurrentSpatialLayer(tmpSpatialLayer);
 				}

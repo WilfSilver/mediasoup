@@ -134,6 +134,7 @@ namespace RTC
 										case RTC::RtpCodecMimeType::Subtype::VP8:
 										case RTC::RtpCodecMimeType::Subtype::H264:
 										case RTC::RtpCodecMimeType::Subtype::VP9:
+										case RTC::RtpCodecMimeType::Subtype::AV1:
 										{
 											return true;
 										}
